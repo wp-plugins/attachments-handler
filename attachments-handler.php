@@ -3,7 +3,7 @@
 Plugin Name: Attachments Handler
 Plugin Tag: tag
 Description: <p>Manage your attachements, detect duplicates, and enable zip downloading of files </p>
-Version: 1.0.1
+Version: 1.0.2
 Framework: SL_Framework
 Author: sedLex
 Author URI: http://www.sedlex.fr/
@@ -696,7 +696,7 @@ div.attach_list p.description{
 					if ($new_list_id_to_clean!="") {
 						$wpdb->query("UPDATE ".$this->table_name." SET attach_used_in='".$new_list_id_to_clean."'  WHERE url='".$rtc->url."'") ;
 					} else {
-						$wpdb->query("DELETE ".$this->table_name." WHERE url='".$rtc->url."'") ;
+						$wpdb->query("DELETE FROM ".$this->table_name." WHERE url='".$rtc->url."'") ;
 					}
         		}
         	}

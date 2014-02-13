@@ -50,10 +50,13 @@ Have fun !
 
 == Changelog ==
 
+= 1.0.2 = 
+* BUG : DELETE stateemnt was incorrect
+
 = 1.0.1 = 
 * Release ! 
 
 == Frequently Asked Questions ==
 
  
-InfoVersion:08cea7c997763b498e382244d3875eb8
+InfoVersion:7a2a5df3f3c45b03a309dd4f98af1121
