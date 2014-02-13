@@ -3,7 +3,7 @@
 Plugin Name: Attachments Handler
 Plugin Tag: tag
 Description: <p>Manage your attachements, detect duplicates, and enable zip downloading of files </p>
-Version: 1.0.2
+Version: 1.0.3
 Framework: SL_Framework
 Author: sedLex
 Author URI: http://www.sedlex.fr/
@@ -1013,9 +1013,9 @@ div.attach_list p.description{
 			
 			// DETECT FILES THAT ARE NOT USED IN ANY PAGES		
 			
-			echo "<h3>".__('Files not used', $this->pluginID)."</h3>" ; 
+			echo "<h3>".__('Files in media manager by not used', $this->pluginID)."</h3>" ; 
 	
-			$res = $wpdb->get_results("SELECT id,titre,url FROM ".$this->table_name." WHERE attach_used_in='' and url!=''") ;
+			$res = $wpdb->get_results("SELECT id,titre,url FROM ".$this->table_name." WHERE attach_used_in='' AND id!=''") ;
 			
 			if (count($res)>0) {
 			

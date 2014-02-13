@@ -50,6 +50,9 @@ Have fun !
 
 == Changelog ==
 
+= 1.0.3 = 
+* NEW: limit the missing files to those in the media manager
+
 = 1.0.2 = 
 * BUG : DELETE stateemnt was incorrect
 
@@ -59,4 +62,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:7a2a5df3f3c45b03a309dd4f98af1121
+InfoVersion:ac49ce60656fc8dd562bd956c75176c2
