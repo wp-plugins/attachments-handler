@@ -50,6 +50,10 @@ Have fun !
 
 == Changelog ==
 
+= 1.0.4 = 
+* BUG: correct the tab selection saving that does not work since the update of jQuery by WP
+* NEW: few enhancements in the framework
+
 = 1.0.3 = 
 * NEW: limit the missing files to those in the media manager
 
@@ -62,4 +66,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:ac49ce60656fc8dd562bd956c75176c2
+InfoVersion:2bf5d1d763180f905b457b71742a220a

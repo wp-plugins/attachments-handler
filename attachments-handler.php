@@ -3,7 +3,7 @@
 Plugin Name: Attachments Handler
 Plugin Tag: tag
 Description: <p>Manage your attachements, detect duplicates, and enable zip downloading of files </p>
-Version: 1.0.3
+Version: 1.0.4
 Framework: SL_Framework
 Author: sedLex
 Author URI: http://www.sedlex.fr/

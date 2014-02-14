@@ -296,7 +296,7 @@ msgstr ""
 
 #: core/translation.class.php:216
 #: core/translation.class.php:339
-#: core/feedback.class.php:63
+#: core/feedback.class.php:62
 #@ SL_framework
 msgid "Your name:"
 msgstr ""
@@ -365,13 +365,13 @@ msgid "The translation %s have been sent"
 msgstr ""
 
 #: core/translation.class.php:583
-#: core/feedback.class.php:174
+#: core/feedback.class.php:173
 #@ SL_framework
 msgid "An error occured sending the email."
 msgstr ""
 
 #: core/translation.class.php:583
-#: core/feedback.class.php:174
+#: core/feedback.class.php:173
 #@ SL_framework
 msgid "Make sure that your wordpress is able to send email."
 msgstr ""
@@ -535,7 +535,7 @@ msgstr ""
 
 #: core/otherplugins.class.php:54
 #@ SL_framework
-msgid "The following plugins have been developed by the author and are not yet installed:"
+msgid "The following plugins have been developed by the author and are not yet been installed:"
 msgstr ""
 
 #: core/otherplugins.class.php:56
@@ -544,57 +544,57 @@ msgid "Plugin not yet installed"
 msgstr ""
 
 #: core/otherplugins.class.php:56
-#: core/otherplugins.class.php:84
+#: core/otherplugins.class.php:87
 #@ SL_framework
 msgid "Description and Screenshots"
 msgstr ""
 
-#: core/otherplugins.class.php:75
+#: core/otherplugins.class.php:78
 #@ SL_framework
 msgid "All author's plugins have been installed. Thank you!"
 msgstr ""
 
-#: core/otherplugins.class.php:81
+#: core/otherplugins.class.php:84
 #@ SL_framework
 msgid "Installed plugins"
 msgstr ""
 
-#: core/otherplugins.class.php:82
+#: core/otherplugins.class.php:85
 #@ SL_framework
 msgid "You have already installed the following author's plugins:"
 msgstr ""
 
-#: core/otherplugins.class.php:84
+#: core/otherplugins.class.php:87
 #@ SL_framework
 msgid "Plugin already installed"
 msgstr ""
 
-#: core/otherplugins.class.php:141
+#: core/otherplugins.class.php:144
 #@ SL_framework
 msgid "The Wordpress page: %s"
 msgstr ""
 
-#: core/otherplugins.class.php:167
+#: core/otherplugins.class.php:170
 #@ SL_framework
 msgid "An Unexpected HTTP Error occurred during the API request."
 msgstr ""
 
-#: core/otherplugins.class.php:172
+#: core/otherplugins.class.php:175
 #@ SL_framework
 msgid "Last update:"
 msgstr ""
 
-#: core/otherplugins.class.php:173
+#: core/otherplugins.class.php:176
 #@ SL_framework
 msgid "Rating: %s"
 msgstr ""
 
-#: core/otherplugins.class.php:182
+#: core/otherplugins.class.php:185
 #@ SL_framework
 msgid "by %s persons"
 msgstr ""
 
-#: core/otherplugins.class.php:184
+#: core/otherplugins.class.php:187
 #@ SL_framework
 msgid "Number of download:"
 msgstr ""
@@ -614,52 +614,52 @@ msgstr ""
 msgid "This is not mandatory! but it may be a sign that this plugin fits you needs: it makes me happy..."
 msgstr ""
 
-#: core/feedback.class.php:55
+#: core/feedback.class.php:54
 #@ SL_framework
 msgid "Feedback form"
 msgstr ""
 
-#: core/feedback.class.php:56
+#: core/feedback.class.php:55
 #@ SL_framework
 msgid "This form is an easy way to contact the author and to discuss issues/incompatibilities/etc. with him"
 msgstr ""
 
-#: core/feedback.class.php:61
+#: core/feedback.class.php:60
 #@ SL_framework
 msgid "Contact the author"
 msgstr ""
 
-#: core/feedback.class.php:67
+#: core/feedback.class.php:66
 #@ SL_framework
 msgid "Your email:"
 msgstr ""
 
-#: core/feedback.class.php:67
+#: core/feedback.class.php:66
 #@ SL_framework
 msgid "Useful... so that the author will be able to anwser you."
 msgstr ""
 
-#: core/feedback.class.php:71
+#: core/feedback.class.php:70
 #@ SL_framework
 msgid "Your comments:"
 msgstr ""
 
-#: core/feedback.class.php:71
+#: core/feedback.class.php:70
 #@ SL_framework
 msgid "Please note that additional information on your wordpress installation will be sent to the author in order to help the debugging if needed (such as : the wordpress version, the installed plugins, etc.)"
 msgstr ""
 
-#: core/feedback.class.php:77
+#: core/feedback.class.php:76
 #@ SL_framework
 msgid "Send feedback"
 msgstr ""
 
-#: core/feedback.class.php:82
+#: core/feedback.class.php:81
 #@ SL_framework
 msgid "No email have been provided for the author of this plugin. Therefore, the feedback is impossible"
 msgstr ""
 
-#: core/feedback.class.php:169
+#: core/feedback.class.php:168
 #@ SL_framework
 msgid "The feedback has been sent"
 msgstr ""
