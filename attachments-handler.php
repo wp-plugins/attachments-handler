@@ -3,7 +3,8 @@
 Plugin Name: Attachments Handler
 Plugin Tag: tag
 Description: <p>Manage your attachements, detect duplicates, and enable zip downloading of files </p>
-Version: 1.0.4
+Version: 1.0.5
+
 Framework: SL_Framework
 Author: sedLex
 Author URI: http://www.sedlex.fr/
@@ -130,7 +131,13 @@ class attachments_handler extends pluginSedLex {
 	*/
 	 
 	public function _notify() {
-		return 0 ; 
+		global $wpdb ; 
+		$nb=0 ; 
+		$nb += $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE url!='' AND is_exist=0") ;
+		$nb += $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." INNER JOIN (SELECT sha1 FROM ".$this->table_name." WHERE sha1!='?' AND sha1!='' GROUP BY sha1 HAVING count(id) > 1) dup ON ".$this->table_name.".sha1 = dup.sha1 ORDER BY ".$this->table_name.".sha1") ; 
+		$nb += $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE attach_used_in='' AND id!=0") ;
+
+		return $nb ; 
 	}
 	
 	
@@ -856,6 +863,10 @@ div.attach_list p.description{
 			}
         }
         
+        // ON SUPPRIME LES LIENS FANTOMES
+    	// =========================================================
+		$wpdb->query("DELETE FROM ".$this->table_name." WHERE url!='' AND id=0 AND attach_used_in='' AND is_exist=0") ;
+
         if ($return_string == "") {
         	return __("No post/article to check.", $this->pluginID) ; 
         } else {
@@ -904,6 +915,7 @@ div.attach_list p.description{
 			echo "<p>".sprintf(__('Each of the %s posts/articles has been analysed (%s links found).', $this->pluginID), "<b>".$total."</b>" , "<b>".$nb_links."</b>" )."</p>" ; 
 		
 			// DETECT MISSING FILES ON HARD DISK
+			//----------------------------------------
 			echo "<h3>".__('Missing files', $this->pluginID)."</h3>" ; 
 			
 			$res = $wpdb->get_results("SELECT id,titre,url,attach_used_in FROM ".$this->table_name." WHERE url!='' AND is_exist=0") ;
@@ -950,6 +962,7 @@ div.attach_list p.description{
 			}
 			
 			// DETECT DUPLICATE FILES
+			// -------------------------------------
 			echo "<h3>".__('Duplicate files', $this->pluginID)."</h3>" ; 
 			
 			$res = $wpdb->get_results( "SELECT * FROM ".$this->table_name." INNER JOIN (SELECT sha1 FROM ".$this->table_name." WHERE sha1!='?' AND sha1!='' GROUP BY sha1 HAVING count(id) > 1) dup ON ".$this->table_name.".sha1 = dup.sha1 ORDER BY ".$this->table_name.".sha1") ; 
@@ -1012,10 +1025,10 @@ div.attach_list p.description{
 			}
 			
 			// DETECT FILES THAT ARE NOT USED IN ANY PAGES		
-			
+			//-------------------------------------------------------
 			echo "<h3>".__('Files in media manager by not used', $this->pluginID)."</h3>" ; 
 	
-			$res = $wpdb->get_results("SELECT id,titre,url FROM ".$this->table_name." WHERE attach_used_in='' AND id!=''") ;
+			$res = $wpdb->get_results("SELECT id,titre,url FROM ".$this->table_name." WHERE attach_used_in='' AND id!=0") ;
 			
 			if (count($res)>0) {
 			

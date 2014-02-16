@@ -50,6 +50,9 @@ Have fun !
 
 == Changelog ==
 
+= 1.0.5 = 
+* NEW: add a notification with the number of errors
+
 = 1.0.4 = 
 * BUG: correct the tab selection saving that does not work since the update of jQuery by WP
 * NEW: few enhancements in the framework
@@ -66,4 +69,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:7568cbbea8581a92dfb31c3d065bd5d5
+InfoVersion:c77ff5f61ef38342861be1715df9c2ed
