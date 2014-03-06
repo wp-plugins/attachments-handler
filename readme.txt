@@ -50,6 +50,9 @@ Have fun !
 
 == Changelog ==
 
+= 1.0.6 = 
+* NEW: improve the look of the configuration page of the plugin
+
 = 1.0.5 = 
 * NEW: add a notification with the number of errors
 
@@ -69,4 +72,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:dd5978a733f657be5d5f8fbc65d9d813
+InfoVersion:f55604555ec44bdd1bb42eb0238427ca

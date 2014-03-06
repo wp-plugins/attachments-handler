@@ -2,9 +2,8 @@
 /**
 Plugin Name: Attachments Handler
 Plugin Tag: tag
-Description: <p>Manage your attachements, detect duplicates, and enable zip downloading of files </p>
-Version: 1.0.5
-
+Description: <p>Enables the supervision of your attachement, detects duplicates, detects unused files.</p><p>You may also create a list of all attached file in the page or in the child pages by using the following shorcode <code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>.</p>
+Version: 1.0.6
 Framework: SL_Framework
 Author: sedLex
 Author URI: http://www.sedlex.fr/
@@ -132,6 +131,34 @@ class attachments_handler extends pluginSedLex {
 	 
 	public function _notify() {
 		global $wpdb ; 
+		
+		$args = array(
+			'numberposts'     => -1,
+			'post_type'       => explode(",",$this->get_param('type_page')),
+			'fields'        => 'ids',
+			'nopaging' 		=> true,
+			'post_status'     => 'publish' 
+		);
+		
+		$myQuery = new WP_Query( $args ); 
+
+		//Looping through the posts
+		$total = 0 ; 
+		while ( $myQuery->have_posts() ) {
+			$myQuery->the_post();
+			$total ++ ; 
+		}
+
+		// Reset Post Data
+		wp_reset_postdata();
+		
+		$verified = $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE id_post!=0") ;
+		
+		// Si le nombre n'est pas cohérent, cela signifie que le nombre d'erreur n'est pas fiable
+		if ($total!=$verified) {
+			return 0 ; 
+		}
+
 		$nb=0 ; 
 		$nb += $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE url!='' AND is_exist=0") ;
 		$nb += $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." INNER JOIN (SELECT sha1 FROM ".$this->table_name." WHERE sha1!='?' AND sha1!='' GROUP BY sha1 HAVING count(id) > 1) dup ON ".$this->table_name.".sha1 = dup.sha1 ORDER BY ".$this->table_name.".sha1") ; 
@@ -242,7 +269,7 @@ class attachments_handler extends pluginSedLex {
 	
 	function add_tinymce_buttons() {
 		$buttons = array() ; 
-		//$buttons[] = array(__('title', $this->pluginID), '[tag]', '[/tag]', plugin_dir_url("/").'/'.str_replace(basename( __FILE__),"",plugin_basename( __FILE__)).'img/img_button.png') ; 
+		$buttons[] = array(__('Attachments Handler', $this->pluginID), '[attach child=1 only_admin=1 title="Title you want" extension="pdf,doc,png"]', '', plugin_dir_url("/").'/'.str_replace(basename( __FILE__),"",plugin_basename( __FILE__)).'img/attach_button.png') ; 
 		return $buttons ; 
 	}
 	
@@ -336,20 +363,22 @@ div.attach_list p.description{
 		global $blog_id ; 
 				
 		SL_Debug::log(get_class(), "Print the configuration page." , 4) ; 
-		
 		?>
-		<div class="wrap">
-			<div id="icon-themes" class="icon32"><br></div>
+
+		<div class="plugin-titleSL">
 			<h2><?php echo $this->pluginName ?></h2>
 		</div>
-		<div style="padding:20px;">			
+		
+		<div class="plugin-contentSL">		
+			<?php echo $this->signature ; ?>
+	
 			<?php
 			//===============================================================================================
 			// After this comment, you may modify whatever you want
 			?>
-			<p><?php echo __("This is the configuration page of the plugin", $this->pluginID) ;?></p>
-			<p><?php echo sprintf(__("To add the list of used attachments in the post or in the child posts, you may used a shortcode like this one %s", $this->pluginID),"<code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>") ;?></p>
-			
+			<p><?php echo __("This plugin enables the supervision of your attachements.", $this->pluginID) ;?></p>
+			<p><?php echo __("You may supervize your attachements, detect duplicates files with different names, detect unused files...", $this->pluginID) ;?></p>
+			<p><?php echo sprintf(__("To add the list of used attachments in the post/page or in the child posts/pages, you may used a shortcode like this one %s (a button is available in the post/page editor)", $this->pluginID),"<code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>") ;?></p>
 			<?php
 			
 			// We check rights
