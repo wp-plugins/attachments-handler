@@ -50,6 +50,9 @@ Have fun !
 
 == Changelog ==
 
+= 1.0.7 = 
+* BUG: T_PAAMAYIM_NEKUDOTAYIM problem due to a &lt;? instead of &lt;?php
+
 = 1.0.6 = 
 * NEW: improve the look of the configuration page of the plugin
 
@@ -72,4 +75,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:f55604555ec44bdd1bb42eb0238427ca
+InfoVersion:745edcf22f251510faf2184eaf6fb23e
