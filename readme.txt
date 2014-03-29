@@ -50,6 +50,9 @@ Have fun !
 
 == Changelog ==
 
+= 1.0.8 = 
+* BUG: Correct various problems &lt;? instead of &lt;?php
+
 = 1.0.7 = 
 * BUG: T_PAAMAYIM_NEKUDOTAYIM problem due to a &lt;? instead of &lt;?php
 
@@ -75,4 +78,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:745edcf22f251510faf2184eaf6fb23e
+InfoVersion:aaada93635a5fce25a2b8041022d8105
