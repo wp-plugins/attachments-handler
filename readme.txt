@@ -50,6 +50,9 @@ Have fun !
 
 == Changelog ==
 
+= 1.0.9 = 
+* BUG: When the attachment is deleted, update the database to indicate such removal
+
 = 1.0.8 = 
 * BUG: Correct various problems &lt;? instead of &lt;?php
 
@@ -78,4 +81,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:f8440229ad16790cd16ff1f4f00a0b29
+InfoVersion:8801b49f79d1d309546180021f80f42f

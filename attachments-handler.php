@@ -3,7 +3,8 @@
 Plugin Name: Attachments Handler
 Plugin Tag: tag
 Description: <p>Enables the supervision of your attachement, detects duplicates, detects unused files.</p><p>You may also create a list of all attached file in the page or in the child pages by using the following shorcode <code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>.</p>
-Version: 1.0.8
+Version: 1.0.9
+
 Framework: SL_Framework
 Author: sedLex
 Author URI: http://www.sedlex.fr/
@@ -68,6 +69,7 @@ class attachments_handler extends pluginSedLex {
 		
 		add_action( 'save_post', array( $this, 'whenPostIsSaved') );
 		add_action( 'edit_attachment', array( $this, 'whenAttachmentIsSaved') );
+		add_action( 'delete_attachment', array( $this, 'whenAttachmentIsSaved') );
 
 		// Important variables initialisation (Do not modify)
 		$this->path = __FILE__ ; 
@@ -446,8 +448,11 @@ div.attach_list p.description{
 							if ($tit_pos=="") {
 								$tit_pos = __("No title", $this->pluginID) ; 
 							}
-
-							$post_used .= "<p><a href=\"".(get_permalink($ai))."\">".$tit_pos."</a> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($ai))."\">".__('Edit', $this->pluginID)."</a>)</span></p>" ; 
+							if (get_edit_post_link($ai)!="") {
+								$post_used .= "<p><a href=\"".(get_permalink($ai))."\">".$tit_pos."</a> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($ai))."\">".__('Edit', $this->pluginID)."</a>)</span></p>" ; 
+							} else {
+								$post_used .= "<p><a href=\"".(get_permalink($ai))."\">".$tit_pos."</a></p>" ; 
+							}
 						}
 					}
 					if ($post_used == "") {
@@ -456,7 +461,11 @@ div.attach_list p.description{
 					if ($r->id==0) {
 						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b> </p>") ; 		
 					} else {
-						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($r->id))."\">".__('Edit', $this->pluginID)."</a>)</span></p>") ; 		
+						if (get_edit_post_link($r->id)!="") {
+							$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($r->id))."\">".__('Edit', $this->pluginID)."</a>)</span></p>") ; 		
+						} else {
+							$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b></p>") ; 		
+						}
 					}
 					$cel2 = new adminCell("<p><em>".$r->description."</em></p>") ; 				
 					$cel3 = new adminCell($post_used) ; 				
@@ -567,7 +576,11 @@ div.attach_list p.description{
 					if ($extension==""){
 						$admin = "" ; 
 						if (current_user_can('manage_options' )) {
-							$admin = " <span style='font-size:75%'>(<a href='".get_edit_post_link($r->id)."'>".__("Edit",$this->pluginID)."</a>)</span>" ; 
+							if (get_edit_post_link($r->id)!="") {
+								$admin = " <span style='font-size:75%'>(<a href='".get_edit_post_link($r->id)."'>".__("Edit",$this->pluginID)."</a>)</span>" ; 
+							} else {
+								$admin = "" ; 
+							}
 						}
 						if ($r->titre=="") {
 							$r->titre = $r->url ; 
@@ -585,7 +598,11 @@ div.attach_list p.description{
 						}
 						if ($found) {
 							if (current_user_can( 'manage_options' )) {
-								$admin = " <span style='font-size:75%'>(<a href='".get_edit_post_link($r->id)."'>".__("Edit",$this->pluginID)."</a>)</p>" ; 
+								if (get_edit_post_link($r->id)!="") {
+									$admin = " <span style='font-size:75%'>(<a href='".get_edit_post_link($r->id)."'>".__("Edit",$this->pluginID)."</a>)</p>" ; 
+								} else {
+									$admin = "" ; 
+								}
 							}
 							if ($r->titre=="") {
 								$r->titre = $r->url ; 
@@ -970,14 +987,22 @@ div.attach_list p.description{
 							if ($tit_pos=="") {
 								$tit_pos = __("No title", $this->pluginID) ; 
 							}
-							$post_used .= "<p><a href=\"".(get_permalink($ai))."\">".$tit_pos."</a> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($ai))."\">".__('Edit', $this->pluginID)."</a>)</span></p>" ; 
+							if (get_edit_post_link($ai)!="") {
+								$post_used .= "<p><a href=\"".(get_permalink($ai))."\">".$tit_pos."</a> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($ai))."\">".__('Edit', $this->pluginID)."</a>)</span></p>" ; 
+							} else {
+								$post_used .= "<p><a href=\"".(get_permalink($ai))."\">".$tit_pos."</a></p>" ; 
+							}
 						}
 					}
 					if ($post_used == "") {
 						$post_used = "<p>".__("(Not used)", $this->pluginID)."</p>" ; 
 					}
 					if ($r->id!=0){
-						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($r->id))."\">".__('Edit', $this->pluginID)."</a>)</span></p>") ; 	
+						if (get_edit_post_link($r->id)!="") {
+							$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($r->id))."\">".__('Edit', $this->pluginID)."</a>)</span></p>") ; 	
+						} else {
+							$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b></p>") ; 
+						}
 					} else {
 						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b></p>") ; 
 					}	
@@ -1030,14 +1055,22 @@ div.attach_list p.description{
 							if ($tit_pos=="") {
 								$tit_pos = __("No title", $this->pluginID) ; 
 							}
-							$post_used .= "<p><a href=\"".(get_permalink($ai))."\">".$tit_pos."</a> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($ai))."\">".__('Edit', $this->pluginID)."</a>)</span></p>" ; 
+							if (get_edit_post_link($ai)!="") {
+								$post_used .= "<p><a href=\"".(get_permalink($ai))."\">".$tit_pos."</a> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($ai))."\">".__('Edit', $this->pluginID)."</a>)</span></p>" ; 
+							} else {
+								$post_used .= "<p><a href=\"".(get_permalink($ai))."\">".$tit_pos."</a></p>" ; 
+							}
 						}
 					}
 					if ($post_used == "") {
 						$post_used = "<p>".__("(Not used)", $this->pluginID)."</p>" ; 
 					}
 					if ($r->id!=0){
-						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($r->id))."\">".__('Edit', $this->pluginID)."</a>)</span></p>") ; 	
+						if (get_edit_post_link($r->id)!="") {
+							$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($r->id))."\">".__('Edit', $this->pluginID)."</a>)</span></p>") ; 	
+						} else {
+							$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b></p>") ; 
+						}
 					} else {
 						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b></p>") ; 
 					}					
@@ -1073,8 +1106,11 @@ div.attach_list p.description{
 					if ($r->titre=="") {
 						$r->titre = $r->url ; 
 					}
-			
-					$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($r->id))."\">".__('Edit', $this->pluginID)."</a>)</span></p>") ; 	
+					if (get_edit_post_link($r->id)!="") {
+						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($r->id))."\">".__('Edit', $this->pluginID)."</a>)</span></p>") ; 	
+					} else {
+						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b></p>") ; 	
+					}
 				
 					$table->add_line(array($cel1), $ligne) ; 
 				}
@@ -1205,20 +1241,25 @@ div.attach_list p.description{
 	}
 	
 	/** ====================================================================================================================================================
-	* Ajax Callback to save attachments
+	* Ajax Callback when the attachments is saved/deleted
 	* @return void
 	*/
 	function whenAttachmentIsSaved($id) {
 		global $wpdb ; 
 		
 		$res = $wpdb->get_var("SELECT attach_used_in FROM ".$this->table_name." WHERE id='".$id."'") ;
+		
+		// On nettoie les posts dans lesquels cet attachement est utilisé
 		if ($res!=null) {
 			$res = explode(",",$res) ; 
 			foreach ($res as $r) {
 				$wpdb->query("DELETE FROM ".$this->table_name." WHERE id_post='".$r."'") ; 
 			}
-			$wpdb->query("DELETE FROM ".$this->table_name." WHERE id='".$id."'") ; 
-		} 				
+		} 
+		
+		// On nettoie cet attachement 
+		$wpdb->query("DELETE FROM ".$this->table_name." WHERE id='".$id."'") ; 
+						
 	}
 }
 
