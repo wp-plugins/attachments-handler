@@ -81,4 +81,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:8801b49f79d1d309546180021f80f42f
+InfoVersion:2d77c4aed7a42f5b3c6a427993b9d031
