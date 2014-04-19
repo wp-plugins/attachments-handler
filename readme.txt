@@ -49,6 +49,9 @@ Have fun !
 
 == Changelog ==
 
+= 1.1.1 = 
+* BUG: Pb with PHP version below 5.2 (now resolved)
+
 = 1.1.0 = 
 * NEW: Add the detection of featured image
 * NEW: Regenerate the thumbnails on demand
@@ -68,4 +71,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:c17b4e599bdb86def93b5469ed6233f4
+InfoVersion:2928fb758d3a4c8ac3dc380c44ae61d5
