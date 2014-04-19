@@ -1645,10 +1645,10 @@ if (!class_exists('pluginSedLex')) {
 				// Alternative default return values (Please modify)
 				case 'debug_level' 			: return 3 		; break ; 
 				case 'global_allow_translation_by_blogs' : return true ; break ; 
-				case 'global_location_plugin'		: return array(		array("*".__("Standard", $this->pluginID), "std"), 
-								array(__("under Plugins", $this->pluginID), "plugins"),											
-								array(__("under Tools", $this->pluginID), "tools"),
-								array(__("under Settings", $this->pluginID), "settings")
+				case 'global_location_plugin'		: return array(		array("*".__("Standard", 'SL_framework'), "std"), 
+								array(__("under Plugins", 'SL_framework'), "plugins"),											
+								array(__("under Tools", 'SL_framework'), "tools"),
+								array(__("under Settings", 'SL_framework'), "settings")
 						   ) ; break ; 
 			}
 			return null ;
