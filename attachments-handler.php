@@ -3,7 +3,8 @@
 Plugin Name: Attachments Handler
 Plugin Tag: tag
 Description: <p>Enables the supervision of your attachement, detects duplicates, detects unused files.</p><p>You may also create a list of all attached file in the page or in the child pages by using the following shorcode <code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>.</p>
-Version: 1.0.9
+Version: 1.1.0
+
 
 Framework: SL_Framework
 Author: sedLex
@@ -41,11 +42,6 @@ class attachments_handler extends pluginSedLex {
 		// The name of the SQL table (Do no modify except if you know what you do)
 		$this->table_name = $wpdb->prefix . "pluginSL_" . get_class() ; 
 
-		//Initilisation of plugin variables if needed (Please modify)
-		$this->your_var1 = 1 ; 
-		$this->your_var2 = array() ; 
-		$this->your_varn = "n" ; 
-
 		//Configuration of callbacks, shortcode, ... (Please modify)
 		// For instance, see 
 		//	- add_shortcode (http://codex.wordpress.org/Function_Reference/add_shortcode)
@@ -67,7 +63,12 @@ class attachments_handler extends pluginSedLex {
 		add_action( "wp_ajax_forceAnalysisAttachments",  array($this,"forceAnalysisAttachments")) ; 
 		add_action( "wp_ajax_cleanAnalysisAttachments",  array($this,"cleanAnalysisAttachments")) ; 
 		
+		add_action( "wp_ajax_stopRegenerateAttachments",  array($this,"stopRegenerateAttachments")) ; 
+		add_action( "wp_ajax_forceRegenerateAttachments",  array($this,"forceRegenerateAttachments")) ; 
+
 		add_action( 'save_post', array( $this, 'whenPostIsSaved') );
+		add_action( 'delete_post', array( $this, 'whenPostIsSaved') );
+		
 		add_action( 'edit_attachment', array( $this, 'whenAttachmentIsSaved') );
 		add_action( 'delete_attachment', array( $this, 'whenAttachmentIsSaved') );
 
@@ -308,6 +309,12 @@ class attachments_handler extends pluginSedLex {
 
 			case 'list_post_id_to_check': return array()			; break ; 
 			case 'nb_post_to_check'  : return 0 ; break ; 
+
+			case 'list_img_id_to_regenerate': return array()			; break ; 
+			case 'nb_img_to_regenerate'  : return 0 ; break ; 
+			case 'info_img_to_regenerate'  : return "" ; break ; 
+
+			
 			
 			case 'max_page_to_check'  : return 200 ; break ; 
 			
@@ -363,6 +370,8 @@ div.attach_list p.description{
 	public function configuration_page() {
 		global $wpdb;
 		global $blog_id ; 
+		
+		$this->set_param('info_img_to_regenerate', "") ; 
 				
 		SL_Debug::log(get_class(), "Print the configuration page." , 4) ; 
 		?>
@@ -476,6 +485,112 @@ div.attach_list p.description{
 
 			$tabs->add_tab(__('All links',  $this->pluginID), ob_get_clean()) ; 
 
+			ob_start() ; 
+			
+				$maxnb = 20 ; 	
+				
+				$table = new adminTable(0, $maxnb, true, true) ;
+				$table->title(array(__('Title of the image', $this->pluginID),__('Image', $this->pluginID),__('Metadata', $this->pluginID), __('Image in...', $this->pluginID))) ; 
+				
+				// We order the posts page according to the choice of the user
+				$order = " ORDER BY " ; 
+				if ($table->current_ordercolumn()==1) {
+					$order .= "description" ;  
+				} else { 
+					$order .= "titre" ;  
+				}				
+				if ($table->current_orderdir()=="DESC") {
+					$order .= " DESC" ;  
+				} else { 
+					$order .= " ASC" ;  
+				}
+				
+				$limit_to_img = "(url LIKE '%.png' OR url LIKE '%.jpg' OR url LIKE '%.bmp' OR url LIKE '%.gif')" ; 
+				
+				$nb = $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE ".$limit_to_img." AND (titre like '%".str_replace("'","",$table->current_filter())."%' OR description like '%".str_replace("'","",$table->current_filter())."%')".$order) ; 
+				$table->set_nb_all_Items($nb) ; 
+				
+				$limit = "" ; 
+				if ($nb>$maxnb) {
+					$limit =  " LIMIT ".(($table->current_page()-1)*$maxnb).",".$maxnb ; 
+				}
+
+				$results = $wpdb->get_results("SELECT * FROM ".$this->table_name." WHERE ".$limit_to_img." AND (titre like '%".str_replace("'","",$table->current_filter())."%' )".$order.$limit) ; 
+				
+				$ligne=0 ; 
+				foreach ($results as $r) {
+					$ligne++ ; 
+					if ($r->titre=="") {
+						$r->titre = $r->url ; 
+					}
+					$all_id = explode(',',$r->attach_used_in) ; 
+					$post_used = "" ; 
+					foreach ($all_id as $ai) {
+						if ($ai!="") {
+							$tit_pos = get_the_title($ai); 
+							if ($tit_pos=="") {
+								$tit_pos = __("No title", $this->pluginID) ; 
+							}
+							if (get_edit_post_link($ai)!="") {
+								$post_used .= "<p><a href=\"".(get_permalink($ai))."\">".$tit_pos."</a> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($ai))."\">".__('Edit', $this->pluginID)."</a>)</span></p>" ; 
+							} else {
+								$post_used .= "<p><a href=\"".(get_permalink($ai))."\">".$tit_pos."</a></p>" ; 
+							}
+						}
+					}
+					if ($post_used == "") {
+						$post_used = "<p>".__("(Not used)", $this->pluginID)."</p>" ; 
+					}
+					if ($r->id==0) {
+						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b> </p>") ; 		
+					} else {
+						if (get_edit_post_link($r->id)!="") {
+							$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b> <span style='font-size:75%'>(<a href=\"".(get_edit_post_link($r->id))."\">".__('Edit', $this->pluginID)."</a>)</span></p>") ; 		
+						} else {
+							$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b></p>") ; 		
+						}
+					}
+					$cel2 = new adminCell("<p>".wp_get_attachment_image( $r->id, "thumbnail")."</p>") ;
+					 
+					$meta = wp_get_attachment_metadata($r->id)	;
+					$meta_toprint = "" ; 
+					if (($meta!==false)&&(isset($meta['width']))) {
+						$meta_toprint .= "<p>".sprintf(__("Dimension: %s", $this->pluginID), $meta['width']."x".$meta['height'])."</p>" ; 
+						$meta_toprint .= "<p>".__("Sizes:", $this->pluginID)."</p>" ; 
+						foreach ($meta['sizes'] as $nms => $ms) {
+							$meta_toprint .= "<p style='padding-left:20px'>".$nms.": ".$ms['width']."x".$ms['height']."</p>" ; 
+						}
+						$meta_toprint .= "<p>".__("Meta data:", $this->pluginID)."</p>" ; 
+						foreach ($meta['image_meta'] as $nim => $im) {
+							if (($im!="")&&($im!=0)) {
+								if ($nim=="created_timestamp") {
+									$meta_toprint .= "<p style='padding-left:20px'>".$nim.": ".date_i18n( get_option( 'date_format' ), $im)."</p>" ; 
+								} else {
+									$meta_toprint .= "<p style='padding-left:20px'>".$nim.": ".$im."</p>" ; 
+								}
+							}
+						}
+					}
+					$cel3 = new adminCell($meta_toprint) ; 				
+					$cel4 = new adminCell($post_used) ; 				
+				
+					$table->add_line(array($cel1, $cel2, $cel3, $cel4), $ligne) ; 
+				}
+				echo $table->flush() ; 
+				
+				echo "<div id='table_regenerate'></div>" ; 
+				
+				echo "<p>" ; 
+				echo "<img id='wait_regenerateAH' src='".WP_PLUGIN_URL."/".str_replace(basename(__FILE__),"",plugin_basename( __FILE__))."core/img/ajax-loader.gif' style='display: none;'>" ; 
+				echo "<input type='button' id='forceRegenerateAH' class='button-primary validButton' onClick='forceRegenerateAH()'  value='". __('Regenerate the Thumbnails',$this->pluginID)."' />" ; 
+				echo "<script>jQuery('#forceRegenerateAH').removeAttr('disabled');</script>" ; 
+				echo " <input type='button' id='stopRegenerateAH' class='button validButton' onClick='stopRegenerateAH()'  value='". __('Stop Regeneration',$this->pluginID)."' />" ; 
+				echo "<script>jQuery('#stopRegenerateAH').attr('disabled', 'disabled');</script>" ; 
+				echo "</p>" ; 
+
+			
+			$tabs->add_tab(__('Images',  $this->pluginID), ob_get_clean()) ; 
+			
 			ob_start() ; 
 
 				$params = new parametersSedLex($this, "tab-parameters") ; 
@@ -759,7 +874,7 @@ div.attach_list p.description{
         	$attachments = get_posts( array(
             	'post_type' => 'attachment',
                 'posts_per_page' => -1,
-                'post_parent' => $p->ID,
+                'post_parent' => $p->ID
         	) );
         	
             foreach ($attachments as $a) {
@@ -778,6 +893,71 @@ div.attach_list p.description{
 					$wpdb->query("INSERT INTO ".$this->table_name." (id,id_post,path,url,is_exist,description,legende,titre,sha1,attach_used_in) VALUES ('".$a->ID."', '0', '".addslashes($resul_file['path'])."', '".addslashes($resul_file['url'])."', '".$resul_file['exist']."', '".addslashes($resul_file['description'])."', '".addslashes($resul_file['legende'])."', '".addslashes($resul_file['titre'])."', '".$resul_file['sha1']."', '')") ;
 				}
             }
+            
+            // ON ANALYSE LES PIECES JOINTES NON-ATTACHE A AUCUN POST
+        	// ===========================================================
+        	$attachments = get_posts( array(
+            	'post_type' => 'attachment',
+                'posts_per_page' => -1,
+                'post_parent' => 0
+        	) );
+        	
+            foreach ($attachments as $a) {
+            	$file_path = get_attached_file($a->ID); 
+            	$return_string .= $a->ID."," ; 
+         
+				if(file_exists($file_path)){
+                	$resul_file = array('exist'=>true, 'path'=>$file_path, 'id_post'=>0, 'description'=>$a->post_content, 'titre'=>$a->post_title, 'legende'=>$a->post_excerpt, 'url'=>wp_get_attachment_url($a->ID), 'sha1'=>sha1_file($file_path)) ; 
+                } else {
+                	$resul_file = array('exist'=>false, 'path'=>$file_path, 'id_post'=>0, 'description'=>$a->post_content, 'titre'=>$a->post_title, 'legende'=>$a->post_excerpt, 'url'=>wp_get_attachment_url($a->ID), 'sha1'=>"?") ; 
+                }
+ 				$nb_res = $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE url='".addslashes($resul_file['url'])."'") ;
+				if ($nb_res>0) {
+					$wpdb->query("UPDATE ".$this->table_name." SET id='".$a->ID."',is_exist='".$resul_file['exist']."',description='".addslashes($resul_file['description'])."',titre='".addslashes($resul_file['titre'])."',legende='".addslashes($resul_file['legende'])."',sha1='".$resul_file['sha1']."'  WHERE url='".addslashes($resul_file['url'])."'") ;
+				} else {
+					$wpdb->query("INSERT INTO ".$this->table_name." (id,id_post,path,url,is_exist,description,legende,titre,sha1,attach_used_in) VALUES ('".$a->ID."', '0', '".addslashes($resul_file['path'])."', '".addslashes($resul_file['url'])."', '".$resul_file['exist']."', '".addslashes($resul_file['description'])."', '".addslashes($resul_file['legende'])."', '".addslashes($resul_file['titre'])."', '".$resul_file['sha1']."', '')") ;
+				}
+            }
+
+          	// ON ANALYSE L'IMAGE MISE EN AVANT (FEATURED IMAGE)
+        	// =======================================================
+        	
+        	$post_thumbnail_id = get_post_thumbnail_id( $p->ID );
+
+        	$attachments = get_posts( array(
+            	'post_type' => 'attachment',
+                'posts_per_page' => -1,
+                'post__in' => array($post_thumbnail_id)
+        	) );
+        	
+            foreach ($attachments as $a) {
+				$file_path = get_attached_file($a->ID); 
+				$return_string .= $a->ID."," ; 
+					 
+				if(file_exists($file_path)){
+					$resul_file = array('exist'=>true, 'path'=>$file_path, 'id_post'=>$p->ID, 'description'=>$a->post_content, 'titre'=>$a->post_title, 'legende'=>$a->post_excerpt, 'url'=>wp_get_attachment_url($a->ID), 'sha1'=>sha1_file($file_path)) ; 
+				} else {
+					$resul_file = array('exist'=>false, 'path'=>$file_path, 'id_post'=>$p->ID, 'description'=>$a->post_content, 'titre'=>$a->post_title, 'legende'=>$a->post_excerpt, 'url'=>wp_get_attachment_url($a->ID), 'sha1'=>"?") ; 
+				}
+								
+				$nb_res = $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE url='".addslashes($resul_file['url'])."'") ;
+				if ($nb_res>0) {
+					$ui = $wpdb->get_var("SELECT attach_used_in FROM ".$this->table_name." WHERE url='".addslashes($resul_file['url'])."' LIMIT 1") ;
+					$ui = explode(",", $ui) ; 
+					$already_in_ui = false ; 
+					foreach ($ui as $uie) {
+						if ($uie==$p->ID) {
+							$already_in_ui = true ;
+						}
+					}
+					if (!$already_in_ui) {
+						$ui[] = $p->ID ; 
+					}
+					$wpdb->query("UPDATE ".$this->table_name." SET id='".$a->ID."',attach_used_in='".implode(",",$ui)."',is_exist='".$resul_file['exist']."',description='".addslashes($resul_file['description'])."',titre='".addslashes($resul_file['titre'])."',legende='".addslashes($resul_file['legende'])."',sha1='".$resul_file['sha1']."'  WHERE url='".addslashes($resul_file['url'])."'") ;
+				} else {
+					$wpdb->query("INSERT INTO ".$this->table_name." (id,id_post,path,url,is_exist,description,legende,titre,sha1,attach_used_in) VALUES ('".$a->ID."', '0', '".addslashes($resul_file['path'])."', '".addslashes($resul_file['url'])."', '".$resul_file['exist']."', '".addslashes($resul_file['description'])."', '".addslashes($resul_file['legende'])."', '".addslashes($resul_file['titre'])."', '".$resul_file['sha1']."', '".$p->ID."')") ;
+				}
+			}
             
             $return_string .= "-" ; 
             
@@ -812,12 +992,18 @@ div.attach_list p.description{
 				$url = $m[1] ; 
 
 				// si le lien est en fait un lien vers la page de l'attachement
-				// on le converti vers le lieb vers la pièce jointe et non vers la page contenant l'attachment
+				// on le converti vers le liebn vers la pièce jointe et non vers la page contenant l'attachment
 				$id_attach = url_to_postid($url) ; 
 				if ($id_attach!=0) {
-					$post_attach = get_post($id_attach) ; 
-					if ($post_attach->type='attachment') {
-						$url = wp_get_attachment_url( $id_attach );
+				
+					$attachments = get_posts( array(
+						'post__in' => array($id_attach)
+					) );
+					
+					foreach ($attachments as $a) {
+						if ($a->type=='attachment') {
+							$url = wp_get_attachment_url( $id_attach );
+						}
 					}
 				}
 				
@@ -1189,6 +1375,79 @@ div.attach_list p.description{
 		
 		$this->set_param('list_post_id_to_check', array()) ; 
 		$this->set_param('nb_post_to_check', 0) ; 
+
+		echo "OK" ; 
+		
+		die() ; 
+	}
+	
+	/** ====================================================================================================================================================
+	* Ajax Callback to force attachment regeneration
+	* @return void
+	*/
+	function forceRegenerateAttachments() {
+		global $post, $wpdb ; 
+		
+		// Initialize the list
+		$at = $this->get_param('list_img_id_to_regenerate') ; 
+		if (empty($at)) {
+			// We get the image 
+			$images = $wpdb->get_results( "SELECT ID FROM $wpdb->posts WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%' ORDER BY ID DESC" ) ;
+			$li = array() ; 
+			foreach ($images as $i) {
+				$li[] = $i->ID ; 
+			}
+			
+			$this->set_param('list_img_id_to_regenerate', $li) ; 
+			$this->set_param('nb_img_to_regenerate', count($li)) ; 
+			$this->set_param('info_img_to_regenerate', "") ; 
+		}
+		
+		// Get the first img of the list
+		$img_temp = $this->get_param('list_img_id_to_regenerate') ; 
+		$iid = array_pop($img_temp) ; 
+		$this->set_param('list_img_id_to_regenerate', $img_temp) ; 
+		
+		// REGENERATE 
+		$fullsizepath = get_attached_file( $iid );
+		if ( false === $fullsizepath || ! file_exists( $fullsizepath ) ) {
+			$this->set_param('info_img_to_regenerate', $this->get_param('info_img_to_regenerate').sprintf(__("The file %s does not exist for the image with id %s.", $this->pluginID),"<code>".esc_html( $fullsizepath )."</code>","<code>".esc_html( $iid )."</code>")."<br>") ; 
+		} else {
+			$metadata = wp_generate_attachment_metadata($iid, $fullsizepath) ; 
+			if ( is_wp_error( $metadata ) ) {
+				$this->set_param('info_img_to_regenerate', $this->get_param('info_img_to_regenerate').sprintf(__("The regeneration for %s fails with the following message: %s.", $this->pluginID),"<code>".esc_html( $fullsizepath )."</code>","<code>".esc_html( $metadata->get_error_message() )."</code>")."<br>") ; 
+			} else if ( empty( $metadata ) ) {
+				$this->set_param('info_img_to_regenerate', $this->get_param('info_img_to_regenerate').sprintf(__("The regeneration for %s fails with an unknown error.", $this->pluginID),"<code>".esc_html( $fullsizepath )."</code>")."<br>") ; 
+			} else {
+				$this->set_param('info_img_to_regenerate', $this->get_param('info_img_to_regenerate').sprintf(__("The file %s is regenerated.", $this->pluginID),"<code>".esc_html( $fullsizepath )."</code>")."<br>") ; 
+			}
+		}
+		
+		echo $this->get_param('info_img_to_regenerate') ; 
+				
+		$at = $this->get_param('list_img_id_to_regenerate') ; 
+		if (empty($at)) {
+			$this->set_param('nb_img_to_regenerate', 0) ; 
+		} else {
+			$pc = floor(100*($this->get_param('nb_img_to_regenerate')-count($this->get_param('list_img_id_to_regenerate')))/$this->get_param('nb_img_to_regenerate')) ; 
+			
+			$pb = new progressBarAdmin(500, 20, $pc, "PROGRESS - ".($this->get_param('nb_img_to_regenerate')-count($this->get_param('list_img_id_to_regenerate')))." / ".$this->get_param('nb_img_to_regenerate')) ; 
+			echo "<br>" ; 
+			$pb->flush() ;	
+		}
+		
+		die() ; 
+	}
+	
+	/** ====================================================================================================================================================
+	* Ajax Callback to stop regeneration
+	* @return void
+	*/
+	function stopRegenerateAttachments() {
+		global $post, $wpdb ; 
+		
+		$this->set_param('list_img_id_to_regenerate', array()) ; 
+		$this->set_param('nb_img_to_regenerate', 0) ; 
 
 		echo "OK" ; 
 		

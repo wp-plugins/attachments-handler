@@ -6,16 +6,20 @@ Author URI: http://www.sedlex.fr/
 Plugin URI: http://wordpress.org/plugins/attachments-handler/
 Tags: tag
 Requires at least: 3.0
-Tested up to: 3.8.1
+Tested up to: 3.9
 Stable tag: trunk
 
-Manage your attachements, detect duplicates, and enable zip downloading of files 
+Enables the supervision of your attachement, detects duplicates, detects unused files.
 
 == Description ==
 
-Manage your attachements, detect duplicates, and enable zip downloading of files 
+Enables the supervision of your attachement, detects duplicates, detects unused files.
+
+You may also create a list of all attached file in the page or in the child pages by using the following shorcode [attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png'].
 
 = Multisite - Wordpress MU =
+
+This plugin is compatible with MU installations.
 
 = Localization =
 
@@ -23,14 +27,9 @@ Manage your attachements, detect duplicates, and enable zip downloading of files
 
 = Features of the framework =
 
-This plugin uses the SL framework. This framework eases the creation of new plugins by providing incredible tools and frames.
+This plugin uses the SL framework. This framework eases the creation of new plugins by providing tools and frames (see dev-toolbox plugin for more info).
 
-For instance, a new created plugin comes with
-
-* A translation interface to simplify the localization of the text of the plugin ; 
-* An embedded SVN client (subversion) to easily commit/update the plugin in wordpress.org repository ; 
-* A detailled documentation of all available classes and methodes ; 
-* etc.
+You may easily translate the text of the plugin and submit it to the developer, send a feedback, or choose the location of the plugin in the admin panel.
 
 Have fun !
 
@@ -50,35 +49,23 @@ Have fun !
 
 == Changelog ==
 
-= 1.0.9 = 
+= 1.1.0 = 
+* NEW: Add the detection of featured image
+* NEW: Regenerate the thumbnails on demand
+
+= 1.0.0 -&gt; 1.0.9 = 
 * BUG: When the attachment is deleted, update the database to indicate such removal
-
-= 1.0.8 = 
 * BUG: Correct various problems &lt;? instead of &lt;?php
-
-= 1.0.7 = 
 * BUG: T_PAAMAYIM_NEKUDOTAYIM problem due to a &lt;? instead of &lt;?php
-
-= 1.0.6 = 
 * NEW: improve the look of the configuration page of the plugin
-
-= 1.0.5 = 
 * NEW: add a notification with the number of errors
-
-= 1.0.4 = 
 * BUG: correct the tab selection saving that does not work since the update of jQuery by WP
 * NEW: few enhancements in the framework
-
-= 1.0.3 = 
 * NEW: limit the missing files to those in the media manager
-
-= 1.0.2 = 
 * BUG : DELETE stateemnt was incorrect
-
-= 1.0.1 = 
 * Release ! 
 
 == Frequently Asked Questions ==
 
  
-InfoVersion:2d77c4aed7a42f5b3c6a427993b9d031
+InfoVersion:3639d2cf5bc0c9090424ee2359363741
