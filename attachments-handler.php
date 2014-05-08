@@ -3,9 +3,7 @@
 Plugin Name: Attachments Handler
 Plugin Tag: tag
 Description: <p>Enables the supervision of your attachement, detects duplicates, detects unused files.</p><p>You may also create a list of all attached file in the page or in the child pages by using the following shorcode <code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>.</p>
-Version: 1.1.1
-
-
+Version: 1.1.2
 Framework: SL_Framework
 Author: sedLex
 Author URI: http://www.sedlex.fr/
@@ -38,7 +36,7 @@ class attachments_handler extends pluginSedLex {
 		$this->pluginName = 'Attachments Handler' ; 
 		
 		// The structure of the SQL table if needed (for instance, 'id_post mediumint(9) NOT NULL, short_url TEXT DEFAULT '', UNIQUE KEY id_post (id_post)') 
-		$this->tableSQL = "id mediumint(9) NOT NULL, id_post mediumint(9) NOT NULL, url VARCHAR(400), path TEXT DEFAULT '', description TEXT DEFAULT '',  titre TEXT DEFAULT '', legende TEXT DEFAULT '', sha1 VARCHAR(40), attach_used_in TEXT DEFAULT '', is_exist BOOL" ; 
+		$this->tableSQL = "id mediumint(9) NOT NULL, id_post mediumint(9) NOT NULL, url VARCHAR(400), path TEXT DEFAULT '', description TEXT DEFAULT '',  titre TEXT DEFAULT '', legende TEXT DEFAULT '', sha1 VARCHAR(40), attach_used_in TEXT DEFAULT '', is_exist BOOL, ignored BOOLEAN NOT NULL DEFAULT 0, id_media SMALLINT NOT NULL AUTO_INCREMENT" ; 
 		// The name of the SQL table (Do no modify except if you know what you do)
 		$this->table_name = $wpdb->prefix . "pluginSL_" . get_class() ; 
 
@@ -65,6 +63,9 @@ class attachments_handler extends pluginSedLex {
 		
 		add_action( "wp_ajax_stopRegenerateAttachments",  array($this,"stopRegenerateAttachments")) ; 
 		add_action( "wp_ajax_forceRegenerateAttachments",  array($this,"forceRegenerateAttachments")) ; 
+		
+		add_action( "wp_ajax_doNotignoreAttachmentIssue",  array($this,"doNotignoreAttachmentIssue")) ; 
+		add_action( "wp_ajax_ignoreAttachmentIssue",  array($this,"ignoreAttachmentIssue")) ; 
 
 		add_action( 'save_post', array( $this, 'whenPostIsSaved') );
 		add_action( 'delete_post', array( $this, 'whenPostIsSaved') );
@@ -122,7 +123,19 @@ class attachments_handler extends pluginSedLex {
 	*/
 	
 	public function _update() {
-		SL_Debug::log(get_class(), "Update the plugin." , 4) ; 
+		global $wpdb ; 
+		SLFramework_Debug::log(get_class(), "Update the plugin." , 4) ; 
+				
+		// This update aims at adding the ignored fields 
+		if ( !$wpdb->get_var("SHOW COLUMNS FROM ".$this->table_name." LIKE 'ignored'")  ) {
+			$wpdb->query("ALTER TABLE ".$this->table_name." ADD ignored BOOLEAN NOT NULL DEFAULT 0;");
+		}
+		
+				
+		// This update aims at adding the id_media fields 
+		if ( !$wpdb->get_var("SHOW COLUMNS FROM ".$this->table_name." LIKE 'id_media'")  ) {
+			$wpdb->query("ALTER TABLE ".$this->table_name." ADD id_media SMALLINT NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (id_media) ;") ;
+		}
 	}
 	
 	/**====================================================================================================================================================
@@ -134,6 +147,7 @@ class attachments_handler extends pluginSedLex {
 	 
 	public function _notify() {
 		global $wpdb ; 
+		global $post ; 
 		
 		$args = array(
 			'numberposts'     => -1,
@@ -147,8 +161,10 @@ class attachments_handler extends pluginSedLex {
 
 		//Looping through the posts
 		$total = 0 ; 
+		$id_t = array() ; 
 		while ( $myQuery->have_posts() ) {
 			$myQuery->the_post();
+			$id_t[] = $post ; 
 			$total ++ ; 
 		}
 
@@ -157,15 +173,28 @@ class attachments_handler extends pluginSedLex {
 		
 		$verified = $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE id_post!=0") ;
 		
+		// Si le nombre de post vérifié est superieur au nombre de post, il faut supprimer les posts en trop
+		if ($total<$verified) {
+			$id_v = $wpdb->get_results("SELECT id_post FROM ".$this->table_name." WHERE id_post!=0") ;
+			if ($id_v) {
+				foreach ($id_v as $i_v) {
+					if (!in_array($i_v, $id_t)) {
+						// On supprime
+						$this->whenPostIsSaved($i_v) ; 
+					}
+				}
+			}
+		}
+		
 		// Si le nombre n'est pas cohérent, cela signifie que le nombre d'erreur n'est pas fiable
-		if ($total!=$verified) {
+		if ($total>$verified) {
 			return 0 ; 
 		}
-
+		
 		$nb=0 ; 
-		$nb += $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE url!='' AND is_exist=0") ;
-		$nb += $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." INNER JOIN (SELECT sha1 FROM ".$this->table_name." WHERE sha1!='?' AND sha1!='' GROUP BY sha1 HAVING count(id) > 1) dup ON ".$this->table_name.".sha1 = dup.sha1 ORDER BY ".$this->table_name.".sha1") ; 
-		$nb += $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE attach_used_in='' AND id!=0") ;
+		$nb += $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE url!='' AND is_exist=0 AND ignored=0") ;
+		$nb += $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." INNER JOIN (SELECT sha1 FROM ".$this->table_name." WHERE sha1!='?' AND sha1!='' AND ignored=0 GROUP BY sha1 HAVING count(id) > 1) dup ON ".$this->table_name.".sha1 = dup.sha1 ORDER BY ".$this->table_name.".sha1") ; 
+		$nb += $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE attach_used_in='' AND id!=0  AND ignored=0") ;
 
 		return $nb ; 
 	}
@@ -373,7 +402,7 @@ div.attach_list p.description{
 		
 		$this->set_param('info_img_to_regenerate', "") ; 
 				
-		SL_Debug::log(get_class(), "Print the configuration page." , 4) ; 
+		SLFramework_Debug::log(get_class(), "Print the configuration page." , 4) ; 
 		?>
 
 		<div class="plugin-titleSL">
@@ -386,21 +415,16 @@ div.attach_list p.description{
 			<?php
 			//===============================================================================================
 			// After this comment, you may modify whatever you want
-			?>
-			<p><?php echo __("This plugin enables the supervision of your attachements.", $this->pluginID) ;?></p>
-			<p><?php echo __("You may supervize your attachements, detect duplicates files with different names, detect unused files...", $this->pluginID) ;?></p>
-			<p><?php echo sprintf(__("To add the list of used attachments in the post/page or in the child posts/pages, you may used a shortcode like this one %s (a button is available in the post/page editor)", $this->pluginID),"<code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>") ;?></p>
-			<?php
 			
 			// We check rights
 			$this->check_folder_rights( array(array(WP_CONTENT_DIR."/sedlex/test/", "rwx")) ) ;
 			
-			$tabs = new adminTabs() ; 
+			$tabs = new SLFramework_Tabs() ; 
 			
 			ob_start() ; 
 			
 				echo "<div id='table_formatting'>"  ; 
-				$this->displayTable() ;
+				$this->displayTable(0) ;
 				echo "</div>" ; 
 			
 				echo "<p>" ; 
@@ -415,9 +439,17 @@ div.attach_list p.description{
 			$tabs->add_tab(__('Attachments issues',  $this->pluginID), ob_get_clean()) ; 	
 			
 			ob_start() ; 
+			
+				echo "<div id='table_formatting'>"  ; 
+				$this->displayTable(1) ;
+				echo "</div>" ;  
+				
+			$tabs->add_tab(__('Ignored issues',  $this->pluginID), ob_get_clean()) ; 	
+			
+			ob_start() ; 
 				$maxnb = 20 ; 	
 				
-				$table = new adminTable(0, $maxnb, true, true) ;
+				$table = new SLFramework_Table(0, $maxnb, true, true) ;
 				$table->title(array(__('Title of the file', $this->pluginID),__('Description of the file', $this->pluginID), __('File in used', $this->pluginID))) ; 
 				
 				// We order the posts page according to the choice of the user
@@ -489,7 +521,7 @@ div.attach_list p.description{
 			
 				$maxnb = 20 ; 	
 				
-				$table = new adminTable(0, $maxnb, true, true) ;
+				$table = new SLFramework_Table(0, $maxnb, true, true) ;
 				$table->title(array(__('Title of the image', $this->pluginID),__('Image', $this->pluginID),__('Metadata', $this->pluginID), __('Image in...', $this->pluginID))) ; 
 				
 				// We order the posts page according to the choice of the user
@@ -593,7 +625,7 @@ div.attach_list p.description{
 			
 			ob_start() ; 
 
-				$params = new parametersSedLex($this, "tab-parameters") ; 
+				$params = new SLFramework_Parameters($this, "tab-parameters") ; 
 				$params->add_title(__('Analysis of',  $this->pluginID)) ; 
 				$params->add_param('type_page', __('Type of page to be analysed:',  $this->pluginID)) ; 
 				
@@ -617,18 +649,60 @@ div.attach_list p.description{
 				
 			$tabs->add_tab(__('Parameters',  $this->pluginID), ob_get_clean() , plugin_dir_url("/").'/'.str_replace(basename(__FILE__),"",plugin_basename(__FILE__))."core/img/tab_param.png") ; 	
 			
+			// HOW To
+			ob_start() ;
+				echo "<p>".__("There is two different ways to analyze the attachments:", $this->pluginID)."</p>" ; 
+				echo "<ul style='list-style-type: disc;padding-left:40px;'>" ; 
+					echo "<li><p>".__("an automatic process (namely background process):", $this->pluginID)."</p></li>" ; 
+						echo "<ul style='list-style-type: circle;padding-left:40px;'>" ; 
+							echo "<li><p>".__("Every time a user visits a page of the frontside of your website, a verification of the attachments related to this page is performed;", $this->pluginID)."</p></li>" ; 
+							echo "<li><p>".__("In order to limit the load of the website, you may configure in the parameter tab the minimum number of minutes bewteen to background check;", $this->pluginID)."</p></li>" ; 
+							echo "<li><p>".__("Note that if you have very few visits, the complete check of all attachments may be quite long.", $this->pluginID)."</p></li>" ; 
+						echo "</ul>" ;
+					echo "<li><p>".__("a forced process:", $this->pluginID)."</p></li>" ; 
+						echo "<ul style='list-style-type: circle;padding-left:40px;'>" ; 
+							echo "<li><p>".__("The button that triggers this forced process may be found in the Attachments issues tabs;", $this->pluginID)."</p></li>" ; 
+							echo "<li><p>".__("You have to stay on that page for processing all attachments: if you go on another page (or if you reload the page), the process will be stopped.", $this->pluginID)."</p></li>" ; 
+						echo "</ul>" ;				
+				echo "</ul>" ; 
+			$howto1 = new SLFramework_Box (__("How the attachments are checked?", $this->pluginID), ob_get_clean()) ; 
+			ob_start() ;
+				echo "<p>".__("Some attachments may be listed in the Attachments issues tab but you are sure that the attachments are used somewhere.", $this->pluginID)."</p>" ; 
+				echo "<p>".__("This could happen if the attachments are not used in a page or a post but, for instance, in your theme or in a plugin.", $this->pluginID)."</p>" ; 
+				echo "<p>".__("If so, just ignore the warning with the appropriate link.", $this->pluginID)."</p>" ; 
+			$howto2 = new SLFramework_Box (__("False positive?", $this->pluginID), ob_get_clean()) ; 
+			ob_start() ;
+				echo "<p>".__("This plugin enables the supervision of your attachements.", $this->pluginID)."</p>" ; 
+				echo "<p>".__("You may supervize your attachements, detect duplicates files with different names, detect unused files...", $this->pluginID)."</p>" ; 
+			$howto3 = new SLFramework_Box (__("Purpose of that plugin", $this->pluginID), ob_get_clean()) ; 
+			ob_start() ;
+				echo "<p>".sprintf(__("To add the list of used attachments in the post/page or in the child posts/pages, you may used a shortcode like %s.", $this->pluginID), "<code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>")."</p>" ; 
+				echo "<p>".__("A button that add this code is available in the post/page editor.", $this->pluginID)."</p>" ; 
+				echo "<ul style='list-style-type: disc;padding-left:40px;'>" ; 
+					echo "<li><p>".sprintf(__("%s: set this option to 1 if you want to display all attachments used in this page and in all child pages, otherwise set this option to 0.", $this->pluginID), "<code>child</code>")."</p></li>" ; 
+					echo "<li><p>".sprintf(__("%s: set this option to 1 if you want to display the list only for the admin (this can be used for configuring the plugin without any impact on the users).", $this->pluginID), "<code>only_admin</code>")."</p></li>" ; 
+					echo "<li><p>".sprintf(__("%s: list the attachments extension you want to list.", $this->pluginID), "<code>extension</code>")."</p></li>" ; 
+				echo "</ul>" ; 
+			$howto4 = new SLFramework_Box (__("Create a list of used attachments", $this->pluginID), ob_get_clean()) ; 
+			ob_start() ; 
+				 echo $howto3->flush() ; 
+				 echo $howto4->flush() ; 
+				 echo $howto1->flush() ; 
+				 echo $howto2->flush() ; 
+			$tabs->add_tab(__('How To',  $this->pluginID), ob_get_clean() , plugin_dir_url("/").'/'.str_replace(basename(__FILE__),"",plugin_basename(__FILE__))."core/img/tab_how.png") ; 	
+
 			$frmk = new coreSLframework() ;  
 			if (((is_multisite())&&($blog_id == 1))||(!is_multisite())||($frmk->get_param('global_allow_translation_by_blogs'))) {
 				ob_start() ; 
 					$plugin = str_replace("/","",str_replace(basename(__FILE__),"",plugin_basename( __FILE__))) ; 
-					$trans = new translationSL($this->pluginID, $plugin) ; 
+					$trans = new SLFramework_Translation($this->pluginID, $plugin) ; 
 					$trans->enable_translation() ; 
 				$tabs->add_tab(__('Manage translations',  $this->pluginID), ob_get_clean() , plugin_dir_url("/").'/'.str_replace(basename(__FILE__),"",plugin_basename(__FILE__))."core/img/tab_trad.png") ; 	
 			}
 
 			ob_start() ; 
 				$plugin = str_replace("/","",str_replace(basename(__FILE__),"",plugin_basename( __FILE__))) ; 
-				$trans = new feedbackSL($plugin, $this->pluginID) ; 
+				$trans = new SLFramework_Feedback($plugin, $this->pluginID) ; 
 				$trans->enable_feedback() ; 
 			$tabs->add_tab(__('Give feedback',  $this->pluginID), ob_get_clean() , plugin_dir_url("/").'/'.str_replace(basename(__FILE__),"",plugin_basename(__FILE__))."core/img/tab_mail.png") ; 	
 			
@@ -636,7 +710,7 @@ div.attach_list p.description{
 				// A list of plugin slug to be excluded
 				$exlude = array('wp-pirate-search') ; 
 				// Replace sedLex by your own author name
-				$trans = new otherPlugins("sedLex", $exlude) ; 
+				$trans = new SLFramework_OtherPlugins("sedLex", $exlude) ; 
 				$trans->list_plugins() ; 
 			$tabs->add_tab(__('Other plugins',  $this->pluginID), ob_get_clean() , plugin_dir_url("/").'/'.str_replace(basename(__FILE__),"",plugin_basename(__FILE__))."core/img/tab_plug.png") ; 	
 			
@@ -1112,7 +1186,7 @@ div.attach_list p.description{
 	* 
 	* @return void
 	*/
-	function displayTable() {
+	function displayTable($ignored=0) {
 		global $wpdb, $post ; 
 		$maxnb = 20 ; 
 		
@@ -1140,23 +1214,28 @@ div.attach_list p.description{
 		$verified = $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE id_post!=0") ;
 		$nb_links = $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE url!=''") ;
 		
-		if ($total!=$verified) {
+		if (($total!=$verified)&&($ignored!=1)) {
 			echo "<p style='font-weight:bold;color:#8F0000;'>".sprintf(__('%s posts/articles have been analysed while there is %s posts/articles to be analysed (%s links found).', $this->pluginID), "<b>".$verified."</b>", "<b>".$total."</b>" , "<b>".$nb_links."</b>" )."</p>"  ; 
 			echo "<p style='font-weight:bold;color:#8F0000;'>".__('If all posts/articles have not been analysed, the results cannot be displayed ... Thus, wait or force the verification!', $this->pluginID)."</p>"  ; 
 		} else {
-			echo "<p>".sprintf(__('Each of the %s posts/articles has been analysed (%s links found).', $this->pluginID), "<b>".$total."</b>" , "<b>".$nb_links."</b>" )."</p>" ; 
-		
+			
+			if ($ignored!=1) {
+				echo "<p>".sprintf(__('Each of the %s posts/articles has been analysed (%s links found).', $this->pluginID), "<b>".$total."</b>" , "<b>".$nb_links."</b>" )."</p>" ; 
+			} 
+			
 			// DETECT MISSING FILES ON HARD DISK
 			//----------------------------------------
 			echo "<h3>".__('Missing files', $this->pluginID)."</h3>" ; 
 			
-			$res = $wpdb->get_results("SELECT id,titre,url,attach_used_in FROM ".$this->table_name." WHERE url!='' AND is_exist=0") ;
+			$res = $wpdb->get_results("SELECT id_media,id,titre,url,attach_used_in,sha1 FROM ".$this->table_name." WHERE url!='' AND is_exist=0 AND ignored=".$ignored) ;
 			
 			if (count($res)>0) {
-				echo "<p>".__('The following files have been deleted on the hard disk but is still registered by Wordpress.', $this->pluginID)."</p>" ; 
-				echo "<p>".__('You have to modify the post/page and thus to remove this file from the media manager.', $this->pluginID)."</p>" ; 
-
-				$table = new adminTable() ;
+				if ($ignored!=1) {
+					echo "<p>".__('The following files have been deleted on the hard disk but is still registered by Wordpress.', $this->pluginID)."</p>" ; 
+					echo "<p>".__('You have to modify the post/page and thus to remove this file from the media manager.', $this->pluginID)."</p>" ; 
+				}
+				
+				$table = new SLFramework_Table() ;
 				$table->title(array(__('Title of the file', $this->pluginID), __('This file is used in', $this->pluginID))) ; 
 	 
 				$ligne = 0 ; 
@@ -1192,25 +1271,36 @@ div.attach_list p.description{
 					} else {
 						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b></p>") ; 
 					}	
-					$cel2 = new adminCell($post_used) ; 				
+					$cel2 = new adminCell($post_used) ; 	
+					
+					if ($ignored!=1) {
+						$cel1->add_action(__("Ignore", $this->pluginID), "ignoreAttachmentIssue('".$r->id_media."','".$r->sha1."', '".addslashes(__("Do you want to ignore this entry?", $this->pluginID))."')") ; 
+					} else {
+						$cel1->add_action(__("Do not Ignore", $this->pluginID), "doNotignoreAttachmentIssue('".$r->id_media."', '".$r->sha1."', '".addslashes(__("Do you want not to ignore this entry?", $this->pluginID))."')") ; 
+					}
 				
-					$table->add_line(array($cel1, $cel2), $ligne) ; 
+					$table->add_line(array($cel1, $cel2), $r->id_media) ; 
 				}
 				echo $table->flush() ;
 			} else {
-				echo "<p>".__('No missing files.', $this->pluginID)."</p>" ; 
+				if ($ignored!=1) {
+					echo "<p>".__('No missing files.', $this->pluginID)."</p>" ; 
+				} else {
+					echo "<p>".__('No missing files ignored.', $this->pluginID)."</p>" ; 
+				}
 			}
 			
 			// DETECT DUPLICATE FILES
 			// -------------------------------------
 			echo "<h3>".__('Duplicate files', $this->pluginID)."</h3>" ; 
 			
-			$res = $wpdb->get_results( "SELECT * FROM ".$this->table_name." INNER JOIN (SELECT sha1 FROM ".$this->table_name." WHERE sha1!='?' AND sha1!='' GROUP BY sha1 HAVING count(id) > 1) dup ON ".$this->table_name.".sha1 = dup.sha1 ORDER BY ".$this->table_name.".sha1") ; 
+			$res = $wpdb->get_results( "SELECT * FROM ".$this->table_name." INNER JOIN (SELECT sha1 FROM ".$this->table_name." WHERE sha1!='?' AND sha1!='' AND ignored=".$ignored." GROUP BY sha1 HAVING count(id) > 1) dup ON ".$this->table_name.".sha1 = dup.sha1 ORDER BY ".$this->table_name.".sha1") ; 
 			
 			if (count($res)>0) {
-				echo "<p>".__('The following files are duplicated on the hard disk.', $this->pluginID)."</p>" ; 
-				echo "<p>".__('You have to modify the post/page and thus to remove the extras files from the media manager.', $this->pluginID)."</p>" ; 
-
+				if ($ignored!=1) {
+					echo "<p>".__('The following files are duplicated on the hard disk.', $this->pluginID)."</p>" ; 
+					echo "<p>".__('You have to modify the post/page and thus to remove the extras files from the media manager.', $this->pluginID)."</p>" ; 
+				}
 				$ligne = 0 ; 
 				$old_sha1 = "" ; 
 				$nb_entr = 0 ; 
@@ -1221,7 +1311,7 @@ div.attach_list p.description{
 							echo $table->flush() ;
 							echo "<p>&nbsp;</p>" ; 
 						}
-						$table = new adminTable() ;
+						$table = new SLFramework_Table() ;
 						$table->title(array(__('Title of the file', $this->pluginID), __('This file is used in', $this->pluginID))) ;
 						$nb_entr = 0 ; 
 						$old_sha1 = $r->sha1 ; 
@@ -1260,30 +1350,43 @@ div.attach_list p.description{
 					} else {
 						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b></p>") ; 
 					}					
-					$cel2 = new adminCell($post_used) ; 				
+					$cel2 = new adminCell($post_used) ; 	
+					
+					if ($ignored!=1) {
+						$cel1->add_action(__("Ignore", $this->pluginID), "ignoreAttachmentIssue('".$r->id_media."','".$r->sha1."', '".addslashes(__("Do you want to ignore this entry?", $this->pluginID))."')") ; 
+					} else {
+						$cel1->add_action(__("Do not Ignore", $this->pluginID), "doNotignoreAttachmentIssue('".$r->id_media."', '".$r->sha1."', '".addslashes(__("Do you want not to ignore this entry?", $this->pluginID))."')") ; 
+					}
+			
 				
-					$table->add_line(array($cel1, $cel2), $ligne) ; 
+					$table->add_line(array($cel1, $cel2), $r->id_media) ; 
 				}
 				
 				if ($nb_entr!=0) {
 					echo $table->flush() ;
 				}
 			} else {
-				echo "<p>".__('No duplicate files.', $this->pluginID)."</p>" ; 
+				if ($ignored!=1) {
+					echo "<p>".__('No duplicate files.', $this->pluginID)."</p>" ; 
+				} else {
+					echo "<p>".__('No duplicate files ignored.', $this->pluginID)."</p>" ; 
+				}
 			}
 			
 			// DETECT FILES THAT ARE NOT USED IN ANY PAGES		
 			//-------------------------------------------------------
 			echo "<h3>".__('Files in media manager by not used', $this->pluginID)."</h3>" ; 
 	
-			$res = $wpdb->get_results("SELECT id,titre,url FROM ".$this->table_name." WHERE attach_used_in='' AND id!=0") ;
+			$res = $wpdb->get_results("SELECT id,titre,url,sha1,id_media FROM ".$this->table_name." WHERE attach_used_in='' AND id!=0 AND ignored=".$ignored) ;
 			
 			if (count($res)>0) {
 			
-				echo "<p>".__('The following files exists on the disk but does not seems to be used ...', $this->pluginID)."</p>" ; 
-				echo "<p>".__('You may remove them from the media manager.', $this->pluginID)."</p>" ; 
+				if ($ignored!=1) {
+					echo "<p>".__('The following files exists on the disk but does not seems to be used ...', $this->pluginID)."</p>" ; 
+					echo "<p>".__('You may remove them from the media manager.', $this->pluginID)."</p>" ; 
+				}
 				
-				$table = new adminTable() ;
+				$table = new SLFramework_Table() ;
 				$table->title(array(__('Title of the file', $this->pluginID))) ; 
 	 
 				$ligne = 0 ; 
@@ -1297,12 +1400,24 @@ div.attach_list p.description{
 					} else {
 						$cel1 = new adminCell("<p><b><a href=\"".($r->url)."\">".$r->titre."</a></b></p>") ; 	
 					}
+					
+					if ($ignored!=1) {
+						$cel1->add_action(__("Ignore", $this->pluginID), "ignoreAttachmentIssue('".$r->id_media."','".$r->sha1."', '".addslashes(__("Do you want to ignore this entry?", $this->pluginID))."')") ; 
+					} else {
+						$cel1->add_action(__("Do not Ignore", $this->pluginID), "doNotignoreAttachmentIssue('".$r->id_media."', '".$r->sha1."', '".addslashes(__("Do you want not to ignore this entry?", $this->pluginID))."')") ; 
+					}
+
 				
-					$table->add_line(array($cel1), $ligne) ; 
+					$table->add_line(array($cel1), $r->id_media) ; 
 				}
 				echo $table->flush() ;
 			} else {
-				echo "<p>".__('No unused files.', $this->pluginID)."</p>" ; 				
+
+				if ($ignored!=1) {
+					echo "<p>".__('No unused files.', $this->pluginID)."</p>" ; 				
+				} else {
+					echo "<p>".__('No unused files ignored.', $this->pluginID)."</p>" ; 
+				}
 			}
 				
 			// DETECT FILES THAT ARE ON THE DISK BUT NOT HANDLED BY THE MEDIA MANAGER	
@@ -1358,7 +1473,7 @@ div.attach_list p.description{
 		} else {
 			$pc = floor(100*($this->get_param('nb_post_to_check')-count($this->get_param('list_post_id_to_check')))/$this->get_param('nb_post_to_check')) ; 
 			
-			$pb = new progressBarAdmin(500, 20, $pc, "PROGRESS - ".($this->get_param('nb_post_to_check')-count($this->get_param('list_post_id_to_check')))." / ".$this->get_param('nb_post_to_check')) ; 
+			$pb = new SLFramework_Progressbar(500, 20, $pc, "PROGRESS - ".($this->get_param('nb_post_to_check')-count($this->get_param('list_post_id_to_check')))." / ".$this->get_param('nb_post_to_check')) ; 
 			echo "<br>" ; 
 			$pb->flush() ;	
 		}
@@ -1431,7 +1546,7 @@ div.attach_list p.description{
 		} else {
 			$pc = floor(100*($this->get_param('nb_img_to_regenerate')-count($this->get_param('list_img_id_to_regenerate')))/$this->get_param('nb_img_to_regenerate')) ; 
 			
-			$pb = new progressBarAdmin(500, 20, $pc, "PROGRESS - ".($this->get_param('nb_img_to_regenerate')-count($this->get_param('list_img_id_to_regenerate')))." / ".$this->get_param('nb_img_to_regenerate')) ; 
+			$pb = new SLFramework_Progressbar(500, 20, $pc, "PROGRESS - ".($this->get_param('nb_img_to_regenerate')-count($this->get_param('list_img_id_to_regenerate')))." / ".$this->get_param('nb_img_to_regenerate')) ; 
 			echo "<br>" ; 
 			$pb->flush() ;	
 		}
@@ -1464,10 +1579,64 @@ div.attach_list p.description{
 		$this->set_param('list_post_id_to_check', array()) ; 
 		$this->set_param('nb_post_to_check', 0) ; 
 
-		$wpdb->query("DELETE FROM ".$this->table_name) ; 
+		$wpdb->query("DELETE FROM ".$this->table_name." WHERE ignored!=1") ; 
 		
 		echo "OK" ; 
 		
+		die() ; 
+	}
+	
+	/** =====================================================================================================
+	* Callback to ignore
+	*
+	* @return string
+	*/
+	
+	function ignoreAttachmentIssue(){
+		global $wpdb ;
+		$sha1 = $_POST['sha1'] ; 
+		$id_media = $_POST['id'] ;
+		 
+		if ($sha1!="?") {
+			if (FALSE===$wpdb->query("UPDATE ".$this->table_name." SET ignored = TRUE WHERE sha1='".$sha1."'")) {
+				echo "error" ; 
+			} else {
+				echo "ok" ; 
+			}
+		} else {
+			if (FALSE===$wpdb->query("UPDATE ".$this->table_name." SET ignored = TRUE WHERE id_media='".$id_media."'")) {
+				echo "error" ; 
+			} else {
+				echo "ok" ; 
+			}		
+		}
+		die() ; 
+	}
+	
+	/** =====================================================================================================
+	* Callback to ignore
+	*
+	* @return string
+	*/
+	
+	function doNotignoreAttachmentIssue(){
+		global $wpdb ;
+		$sha1 = $_POST['sha1'] ; 
+		$id_media = $_POST['id'] ; 
+		if ($sha1!="?") {
+			if (FALSE===$wpdb->query("UPDATE ".$this->table_name." SET ignored = FALSE WHERE sha1='".$sha1."'")) {
+				echo "error" ; 
+			} else {
+				echo "ok" ; 
+			}
+		} else {
+			if (FALSE===$wpdb->query("UPDATE ".$this->table_name." SET ignored = FALSE WHERE id_media='".$id_media."'")) {
+				echo "error" ; 
+			} else {
+				echo "ok" ; 
+			}		
+		}
+
 		die() ; 
 	}
 	

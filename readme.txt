@@ -49,6 +49,11 @@ Have fun !
 
 == Changelog ==
 
+= 1.1.2 = 
+* NEW: Add a How-To tab
+* NEW: Add an ignore button
+* IMPROVE: Change the class name of the core to avoid conflict
+
 = 1.1.1 = 
 * BUG: Pb with PHP version below 5.2 (now resolved)
 
@@ -71,4 +76,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:2928fb758d3a4c8ac3dc380c44ae61d5
+InfoVersion:db16091d6db7957e525f9e081696321c4868d40a

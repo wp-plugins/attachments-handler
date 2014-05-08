@@ -82,3 +82,57 @@ function stopRegenerateAH() {
 		// nothing
 	});
 }
+
+function doNotignoreAttachmentIssue(id_entry, sha1_entry, msg) {
+	var res = confirm(msg) ; 
+	if (res==true) {
+		var arguments = {
+			action: 'doNotignoreAttachmentIssue' ,
+			id: id_entry,
+			sha1: sha1_entry
+		} 
+		  
+		//POST the data and append the results to the results div
+		jQuery.post(ajaxurl, arguments, function(response) {
+			if (response=="ok") {
+				jQuery("#ligne"+id_entry).hide();
+				window.location.href=window.location.href ; 
+			} else {
+				jQuery("#ligne"+id_entry).append(" "); // Just to stop the waiting image
+				alert(response) ; 			
+			}
+		}).error(function(x,e) { 
+			alert("Error "+x.status) ; 
+			jQuery("#ligne"+id_entry).append(" ");// Just to stop the waiting image
+		});		
+	} else {
+		jQuery("#ligne"+id_entry).append(" ");// Just to stop the waiting image
+	}
+}
+
+function ignoreAttachmentIssue(id_entry, sha1_entry, msg) {
+	var res = confirm(msg) ; 
+	if (res==true) {
+		var arguments = {
+			action: 'ignoreAttachmentIssue' ,
+			id: id_entry,
+			sha1: sha1_entry
+		} 
+		  
+		//POST the data and append the results to the results div
+		jQuery.post(ajaxurl, arguments, function(response) {
+			if (response=="ok") {
+				jQuery("#ligne"+id_entry).hide();
+				window.location.href=window.location.href ; 
+			} else {
+				jQuery("#ligne"+id_entry).append(" "); // Just to stop the waiting image
+				alert(response) ; 			
+			}
+		}).error(function(x,e) { 
+			alert("Error "+x.status) ; 
+			jQuery("#ligne"+id_entry).append(" ");// Just to stop the waiting image
+		});		
+	} else {
+		jQuery("#ligne"+id_entry).append(" ");// Just to stop the waiting image
+	}
+}
