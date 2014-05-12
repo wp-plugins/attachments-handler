@@ -49,6 +49,9 @@ Have fun !
 
 == Changelog ==
 
+= 1.1.3 = 
+* BUG: Issue when the number of checked posts is higher than the actual number of posts
+
 = 1.1.2 = 
 * NEW: Add a How-To tab
 * NEW: Add an ignore button
@@ -76,4 +79,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:2e648d62721ea326bf644a6477d86882669330b0
+InfoVersion:c629dfa0fbe51332549e06e54feea106b8364874

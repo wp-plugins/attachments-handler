@@ -3,7 +3,7 @@
 Plugin Name: Attachments Handler
 Plugin Tag: tag
 Description: <p>Enables the supervision of your attachement, detects duplicates, detects unused files.</p><p>You may also create a list of all attached file in the page or in the child pages by using the following shorcode <code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>.</p>
-Version: 1.1.2
+Version: 1.1.3
 Framework: SL_Framework
 Author: sedLex
 Author URI: http://www.sedlex.fr/
@@ -149,6 +149,8 @@ class attachments_handler extends pluginSedLex {
 		global $wpdb ; 
 		global $post ; 
 		
+		
+		
 		$args = array(
 			'numberposts'     => -1,
 			'post_type'       => explode(",",$this->get_param('type_page')),
@@ -171,21 +173,23 @@ class attachments_handler extends pluginSedLex {
 		// Reset Post Data
 		wp_reset_postdata();
 		
-		$verified = $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE id_post!=0") ;
 		
+		
+		$verified = $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE id_post!=0") ;
+	
 		// Si le nombre de post vérifié est superieur au nombre de post, il faut supprimer les posts en trop
 		if ($total<$verified) {
 			$id_v = $wpdb->get_results("SELECT id_post FROM ".$this->table_name." WHERE id_post!=0") ;
-			if ($id_v) {
+			if ($id_v!==null) {
 				foreach ($id_v as $i_v) {
-					if (!in_array($i_v, $id_t)) {
+					if (!in_array($i_v->id_post, $id_t)) {
 						// On supprime
-						$this->whenPostIsSaved($i_v) ; 
+						$this->whenPostIsSaved($i_v->id_post) ; 
 					}
 				}
 			}
 		}
-		
+				
 		// Si le nombre n'est pas cohérent, cela signifie que le nombre d'erreur n'est pas fiable
 		if ($total>$verified) {
 			return 0 ; 
