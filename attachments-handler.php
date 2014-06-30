@@ -3,7 +3,7 @@
 Plugin Name: Attachments Handler
 Plugin Tag: tag
 Description: <p>Enables the supervision of your attachement, detects duplicates, detects unused files.</p><p>You may also create a list of all attached file in the page or in the child pages by using the following shorcode <code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>.</p>
-Version: 1.1.3
+Version: 1.1.4
 Framework: SL_Framework
 Author: sedLex
 Author URI: http://www.sedlex.fr/
@@ -36,7 +36,7 @@ class attachments_handler extends pluginSedLex {
 		$this->pluginName = 'Attachments Handler' ; 
 		
 		// The structure of the SQL table if needed (for instance, 'id_post mediumint(9) NOT NULL, short_url TEXT DEFAULT '', UNIQUE KEY id_post (id_post)') 
-		$this->tableSQL = "id mediumint(9) NOT NULL, id_post mediumint(9) NOT NULL, url VARCHAR(400), path TEXT DEFAULT '', description TEXT DEFAULT '',  titre TEXT DEFAULT '', legende TEXT DEFAULT '', sha1 VARCHAR(40), attach_used_in TEXT DEFAULT '', is_exist BOOL, ignored BOOLEAN NOT NULL DEFAULT 0, id_media SMALLINT NOT NULL AUTO_INCREMENT" ; 
+		$this->tableSQL = "id mediumint(9) NOT NULL, id_post mediumint(9) NOT NULL, url VARCHAR(400), path TEXT DEFAULT '', description TEXT DEFAULT '',  titre TEXT DEFAULT '', legende TEXT DEFAULT '', sha1 VARCHAR(40), attach_used_in TEXT DEFAULT '', is_exist BOOL, ignored BOOLEAN NOT NULL DEFAULT 0, id_media BIGINT NOT NULL AUTO_INCREMENT" ; 
 		// The name of the SQL table (Do no modify except if you know what you do)
 		$this->table_name = $wpdb->prefix . "pluginSL_" . get_class() ; 
 
@@ -70,6 +70,7 @@ class attachments_handler extends pluginSedLex {
 		add_action( 'save_post', array( $this, 'whenPostIsSaved') );
 		add_action( 'delete_post', array( $this, 'whenPostIsSaved') );
 		
+		add_action( 'add_attachment', array( $this, 'whenAttachmentIsSaved') );
 		add_action( 'edit_attachment', array( $this, 'whenAttachmentIsSaved') );
 		add_action( 'delete_attachment', array( $this, 'whenAttachmentIsSaved') );
 
@@ -134,8 +135,11 @@ class attachments_handler extends pluginSedLex {
 				
 		// This update aims at adding the id_media fields 
 		if ( !$wpdb->get_var("SHOW COLUMNS FROM ".$this->table_name." LIKE 'id_media'")  ) {
-			$wpdb->query("ALTER TABLE ".$this->table_name." ADD id_media SMALLINT NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (id_media) ;") ;
+			$wpdb->query("ALTER TABLE ".$this->table_name." ADD id_media BIGINT NOT NULL AUTO_INCREMENT, ADD PRIMARY KEY (id_media) ;") ;
 		}
+		
+		// We increase the size of the index
+		$wpdb->query("ALTER TABLE ".$this->table_name." MODIFY id_media BIGINT NOT NULL AUTO_INCREMENT");
 	}
 	
 	/**====================================================================================================================================================
@@ -164,34 +168,31 @@ class attachments_handler extends pluginSedLex {
 		//Looping through the posts
 		$total = 0 ; 
 		$id_t = array() ; 
-		while ( $myQuery->have_posts() ) {
-			$myQuery->the_post();
-			$id_t[] = $post ; 
-			$total ++ ; 
+		//Looping through the posts
+		$total = 0 ; 
+		if ( $myQuery->have_posts() ) {
+			foreach( $myQuery->posts as $id ) {
+				$id_t[] = $id ; 
+        		$total ++ ; 
+   			}
 		}
 
 		// Reset Post Data
 		wp_reset_postdata();
 		
-		
-		
 		$verified = $wpdb->get_var("SELECT COUNT(*) FROM ".$this->table_name." WHERE id_post!=0") ;
-	
-		// Si le nombre de post vérifié est superieur au nombre de post, il faut supprimer les posts en trop
-		if ($total<$verified) {
-			$id_v = $wpdb->get_results("SELECT id_post FROM ".$this->table_name." WHERE id_post!=0") ;
-			if ($id_v!==null) {
-				foreach ($id_v as $i_v) {
-					if (!in_array($i_v->id_post, $id_t)) {
-						// On supprime
-						$this->whenPostIsSaved($i_v->id_post) ; 
-					}
-				}
-			}
-		}
 				
 		// Si le nombre n'est pas cohérent, cela signifie que le nombre d'erreur n'est pas fiable
-		if ($total>$verified) {
+		if ($total<$verified) {
+			// DELETE post that should not be here
+			$ids = $wpdb->get_results("SELECT id_post FROM ".$this->table_name." WHERE id_post!=0") ;
+			foreach($ids as $i) {
+				if (in_array($i->id_post, $id_t)) {
+					// nothing to do  
+				} else {
+					$wpdb->query("DELETE FROM ".$this->table_name." WHERE id_post='".$i->id_post."';") ; 
+				}					
+			}
 			return 0 ; 
 		}
 		
@@ -1193,7 +1194,7 @@ div.attach_list p.description{
 	function displayTable($ignored=0) {
 		global $wpdb, $post ; 
 		$maxnb = 20 ; 
-		
+			
 		$args = array(
 			'numberposts'     => -1,
 			'post_type'       => explode(",",$this->get_param('type_page')),
@@ -1203,14 +1204,17 @@ div.attach_list p.description{
 		);
 		
 		$myQuery = new WP_Query( $args ); 
-
-
+		
 		//Looping through the posts
 		$total = 0 ; 
-		while ( $myQuery->have_posts() ) {
-			$myQuery->the_post();
-			$total ++ ; 
+		$list_posts = array() ; 
+		if ( $myQuery->have_posts() ) {
+			foreach( $myQuery->posts as $id ) {
+        		$list_posts[] = $id ; 
+        		$total ++ ; 
+   			}
 		}
+		
 
 		// Reset Post Data
 		wp_reset_postdata();
@@ -1221,8 +1225,21 @@ div.attach_list p.description{
 		if (($total!=$verified)&&($ignored!=1)) {
 			echo "<p style='font-weight:bold;color:#8F0000;'>".sprintf(__('%s posts/articles have been analysed while there is %s posts/articles to be analysed (%s links found).', $this->pluginID), "<b>".$verified."</b>", "<b>".$total."</b>" , "<b>".$nb_links."</b>" )."</p>"  ; 
 			echo "<p style='font-weight:bold;color:#8F0000;'>".__('If all posts/articles have not been analysed, the results cannot be displayed ... Thus, wait or force the verification!', $this->pluginID)."</p>"  ; 
+		
+			// DELETE post that should not be here
+			if ($total<$verified) {
+				$ids = $wpdb->get_results("SELECT id_post FROM ".$this->table_name." WHERE id_post!=0") ;
+				$all_id = array() ; 
+				foreach($ids as $i) {
+					if (in_array($i->id_post, $list_posts)) {
+						// nothing to do  
+					} else {
+						$wpdb->query("DELETE FROM ".$this->table_name." WHERE id_post='".$i->id_post."';") ; 
+						echo "DELETE FROM ".$this->table_name." WHERE id_post='".$i->id_post."';" ; 
+					}					
+				}
+			}
 		} else {
-			
 			if ($ignored!=1) {
 				echo "<p>".sprintf(__('Each of the %s posts/articles has been analysed (%s links found).', $this->pluginID), "<b>".$total."</b>" , "<b>".$nb_links."</b>" )."</p>" ; 
 			} 
@@ -1451,9 +1468,12 @@ div.attach_list p.description{
 
 			//Looping through the posts
 			$post_temp = array() ; 
-			while ( $myQuery->have_posts() ) {
-				$myQuery->the_post();
-				$post_temp[] = $post;
+			$total = 0 ; 
+			if ( $myQuery->have_posts() ) {
+				foreach( $myQuery->posts as $id ) {
+					$post_temp[] = $id ; 
+   		     		$total ++ ; 
+   				}
 			}
 
 			// Reset Post Data
@@ -1669,7 +1689,8 @@ div.attach_list p.description{
 				$wpdb->query("UPDATE ".$this->table_name." SET attach_used_in='".implode(',', $new_array_used_in)."'  WHERE id='".($r->id)."'") ;
 			}
 		}
-					
+		// On reteste immediatement le post
+		$this->check_post_for_attachments($id, false) ; 
 	}
 	
 	/** ====================================================================================================================================================
@@ -1691,7 +1712,6 @@ div.attach_list p.description{
 		
 		// On nettoie cet attachement 
 		$wpdb->query("DELETE FROM ".$this->table_name." WHERE id='".$id."'") ; 
-						
 	}
 }
 

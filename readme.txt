@@ -6,7 +6,7 @@ Author URI: http://www.sedlex.fr/
 Plugin URI: http://wordpress.org/plugins/attachments-handler/
 Tags: tag
 Requires at least: 3.0
-Tested up to: 3.9
+Tested up to: 3.9.1
 Stable tag: trunk
 
 Enables the supervision of your attachement, detects duplicates, detects unused files.
@@ -49,6 +49,10 @@ Have fun !
 
 == Changelog ==
 
+= 1.1.4 = 
+* BUG: Problem with the id_media , then we upgrade to BIGINT
+* BUG: the deletion of unwanted post is improved as it does not work correctly
+
 = 1.1.3 = 
 * BUG: Issue when the number of checked posts is higher than the actual number of posts
 
@@ -79,4 +83,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:08f41f4b8aa3fbddc3b4e0745bd1ace17b1186dc
+InfoVersion:215e4f76caa4107df555e274695a443ebc00345f
