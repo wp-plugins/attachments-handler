@@ -3,7 +3,7 @@
 Plugin Name: Attachments Handler
 Plugin Tag: tag
 Description: <p>Enables the supervision of your attachement, detects duplicates, detects unused files.</p><p>You may also create a list of all attached file in the page or in the child pages by using the following shorcode <code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>.</p>
-Version: 1.1.4
+Version: 1.1.5
 Framework: SL_Framework
 Author: sedLex
 Author URI: http://www.sedlex.fr/
