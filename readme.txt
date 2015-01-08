@@ -4,7 +4,7 @@ Author: sedLex
 Contributors: sedLex
 Author URI: http://www.sedlex.fr/
 Plugin URI: http://wordpress.org/plugins/attachments-handler/
-Tags: tag
+Tags: attachments, check, validity, documents, images, duplicate, not used
 Requires at least: 3.0
 Tested up to: 4.2
 Stable tag: trunk
@@ -82,10 +82,10 @@ Have fun !
 * BUG: correct the tab selection saving that does not work since the update of jQuery by WP
 * NEW: few enhancements in the framework
 * NEW: limit the missing files to those in the media manager
-* BUG : DELETE stateemnt was incorrect
+* BUG : DELETE statement was incorrect
 * Release ! 
 
 == Frequently Asked Questions ==
 
  
-InfoVersion:f7a857e2c2cb0506b70a83aceb78ef8fd0070946
+InfoVersion:72d3584f67cf551f0bb82e124a08f21d88acd503
