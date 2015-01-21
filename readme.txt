@@ -50,6 +50,9 @@ Have fun !
 
 == Changelog ==
 
+= 1.1.6 = 
+* NEW: deletion of temp file upon desinstall
+
 = 1.1.5 = 
 * Various enhancement
 * NEW : add icons
@@ -88,4 +91,4 @@ Have fun !
 == Frequently Asked Questions ==
 
  
-InfoVersion:72d3584f67cf551f0bb82e124a08f21d88acd503
+InfoVersion:bbb6e2b6bcbe24d50e718e1b35eb9a7de3e92e1d

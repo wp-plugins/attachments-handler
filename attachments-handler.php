@@ -3,7 +3,7 @@
 Plugin Name: Attachments Handler
 Plugin Tag: attachments, check, validity, documents, images, duplicate, not used
 Description: <p>Enables the supervision of your attachement, detects duplicates, detects unused files.</p><p>You may also create a list of all attached file in the page or in the child pages by using the following shorcode <code>[attach child=1 only_admin=1 title='Title you want' extension='pdf,doc,png']</code>.</p>
-Version: 1.1.5
+Version: 1.1.6
 Framework: SL_Framework
 Author: sedLex
 Author URI: http://www.sedlex.fr/
@@ -93,6 +93,7 @@ class attachments_handler extends pluginSedLex {
 	
 	static public function uninstall_removedata () {
 		global $wpdb ;
+		
 		// DELETE OPTIONS
 		delete_option('attachments_handler'.'_options') ;
 		if (is_multisite()) {
@@ -112,6 +113,20 @@ class attachments_handler extends pluginSedLex {
 			switch_to_blog($old_blog);
 		} else {
 			$wpdb->query("DROP TABLE ".$wpdb->prefix . "pluginSL_" . 'attachments_handler' ) ; 
+		}
+		
+		// DELETE FILES if needed
+		//SLFramework_Utils::rm_rec(WP_CONTENT_DIR."/sedlex/my-plugin/"); 
+		$plugins_all = 	get_plugins() ; 
+		$nb_SL = 0 ; 	
+		foreach($plugins_all as $url => $pa) {
+			$info = pluginSedlex::get_plugins_data(WP_PLUGIN_DIR."/".$url);
+			if ($info['Framework_Email']=="sedlex@sedlex.fr"){
+				$nb_SL++ ; 
+			}
+		}
+		if ($nb_SL==1) {
+			SLFramework_Utils::rm_rec(WP_CONTENT_DIR."/sedlex/my-plugin/"); 
 		}
 	}
 	
@@ -152,8 +167,6 @@ class attachments_handler extends pluginSedLex {
 	public function _notify() {
 		global $wpdb ; 
 		global $post ; 
-		
-		
 		
 		$args = array(
 			'numberposts'     => -1,
@@ -404,7 +417,7 @@ div.attach_list p.description{
 	public function configuration_page() {
 		global $wpdb;
 		global $blog_id ; 
-		
+	
 		$this->set_param('info_img_to_regenerate', "") ; 
 				
 		SLFramework_Debug::log(get_class(), "Print the configuration page." , 4) ; 
