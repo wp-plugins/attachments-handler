@@ -126,7 +126,7 @@ class attachments_handler extends pluginSedLex {
 			}
 		}
 		if ($nb_SL==1) {
-			SLFramework_Utils::rm_rec(WP_CONTENT_DIR."/sedlex/my-plugin/"); 
+			SLFramework_Utils::rm_rec(WP_CONTENT_DIR."/sedlex/"); 
 		}
 	}
 	
